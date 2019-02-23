@@ -63,10 +63,10 @@ class FrozenQLearner:
 
     def init_Q(self):
         assert(self.R is not None), "Missing R matrix"
-        self.Q = np.zeros((self.numS,self.numA))
+        self.Q = np.array([[0 if not np.isnan(el) else np.nan for el in row] for row in self.R])
 
     def update_Q(self,state_1,action,reward,state_2):
-        learned_value = self.R[state_1,action] + self.gamma*self.Q[state_2,np.argmax(self.Q[state_2,:])]
+        learned_value = self.R[state_1,action] + self.gamma*self.Q[state_2,np.nanargmax(self.Q[state_2,:])]
         self.Q[state_1,action] = (1-self.alpha)*self.Q[state_1,action]+self.alpha*(learned_value)
 
     @staticmethod
@@ -86,15 +86,14 @@ class FrozenQLearner:
         return action
 
     def select_action(self,state):
+        poss_Q = self.Q[state, :]
         if np.random.random() > self.epsilon:
             print('Selecting random action')
             poss_R = self.R[state,:]
-            self.rdm_poss_act(poss_R,state)
+            action = self.rdm_poss_act(poss_R,state)
         else:
-            poss_Q = self.Q[state, :]
             print('Selecting from Q values %s' % poss_Q)
             action = self.rdm_opt_act(poss_Q)
-            ### Need something to ensure a random optimal Q value is actually possible
         return action
 
     def update_epsilon(self,new_epsilon):
@@ -106,16 +105,22 @@ if __name__ =='__main__':
     print(testLearner.R)
     testLearner.init_Q()
 
-    NUM_ITERATIONS = 30
+    NUM_ITERATIONS = 1000
 
     # Reset the environment and return the initial state
     state = testLearner.FLenv.reset()
     print('Initial state is %d' % state)
 
+    episode = 0
+
     for iter in range(NUM_ITERATIONS):
+        # Display the environment for info
+        testLearner.FLenv.render()
         # Select action, either random or maximum Q value
         action = testLearner.select_action(state)
         print('Action selected is %d' % action)
+        is_feasible = not np.isnan(testLearner.R[state,action])
+        print('Check - action selected is feasible: %s' % is_feasible)
         # Take the action in the environment and observe new state
         state_new, _, done, _ = testLearner.FLenv.step(action)
         print('New state is %d' % state_new)
@@ -125,6 +130,11 @@ if __name__ =='__main__':
         testLearner.update_Q(state,action,reward,state_new)
         print('Q updated:')
         print(testLearner.Q)
-        # Update states
-        state, state_new = state_new, None
-        print('*** Next iteration ***')
+        if done:
+            state = testLearner.FLenv.reset()
+            state_new = None
+            episode += 1
+        else:
+            # Update states
+            state, state_new = state_new, None
+        print('*** Next iteration *** Iteration %d, Episode %d' % (iter,episode))
