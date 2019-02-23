@@ -1,12 +1,14 @@
 import numpy as np
+import logging
 from gym.envs.toy_text.frozen_lake import FrozenLakeEnv
+import datetime as dt
 
 class FrozenQLearner:
 
-    def __init__(self,alpha,gamma,epsilon):
+    def __init__(self,steps,alpha,gamma,epsilon_start,df1,df2,log_level,is_slippery=False):
 
         # Initialise FL environment
-        self.FLenv = FrozenLakeEnv(is_slippery=False)
+        self.FLenv = FrozenLakeEnv(is_slippery=is_slippery)
         self.map = map = self.FLenv.desc
 
         # Check the map row sizes are consistent
@@ -25,7 +27,11 @@ class FrozenQLearner:
         # Initialise parameters
         self.alpha = alpha
         self.gamma = gamma
-        self.epsilon = epsilon
+        self.epsilon = epsilon_start
+        self.steps = steps
+
+        # Initialise logging level
+        self.log_level = log_level
 
     def get_state(self, map_row, map_col):
         return map_row * self.mapLen + map_col
@@ -88,53 +94,89 @@ class FrozenQLearner:
     def select_action(self,state):
         poss_Q = self.Q[state, :]
         if np.random.random() > self.epsilon:
-            print('Selecting random action')
+            logging.debug('Selecting random action')
             poss_R = self.R[state,:]
             action = self.rdm_poss_act(poss_R,state)
         else:
-            print('Selecting from Q values %s' % poss_Q)
+            logging.debug('Selecting from Q values %s',poss_Q)
             action = self.rdm_opt_act(poss_Q)
         return action
 
     def update_epsilon(self,new_epsilon):
         self.epsilon = new_epsilon
 
-if __name__ =='__main__':
-    testLearner = FrozenQLearner(0.5,0.5,0.6)
-    testLearner.init_R(100,0,False)
-    print(testLearner.R)
-    testLearner.init_Q()
 
-    NUM_ITERATIONS = 1000
+    def execute(self):
 
-    # Reset the environment and return the initial state
-    state = testLearner.FLenv.reset()
-    print('Initial state is %d' % state)
+        logging.basicConfig(level=self.log_level)
 
-    episode = 0
+        episode = 0
+        state = self.FLenv.reset()
+        self.init_R(val_goal=100,val_other=0,wall_moves=False)
+        logging.debug('Reward matrix %s',self.R)
+        self.init_Q()
 
-    for iter in range(NUM_ITERATIONS):
-        # Display the environment for info
-        testLearner.FLenv.render()
-        # Select action, either random or maximum Q value
-        action = testLearner.select_action(state)
-        print('Action selected is %d' % action)
-        is_feasible = not np.isnan(testLearner.R[state,action])
-        print('Check - action selected is feasible: %s' % is_feasible)
-        # Take the action in the environment and observe new state
-        state_new, _, done, _ = testLearner.FLenv.step(action)
-        print('New state is %d' % state_new)
-        # Identify the reward of this action
-        reward = testLearner.R[state,action]
-        # Update Q based on the reward of the action
-        testLearner.update_Q(state,action,reward,state_new)
-        print('Q updated:')
-        print(testLearner.Q)
-        if done:
-            state = testLearner.FLenv.reset()
-            state_new = None
-            episode += 1
-        else:
-            # Update states
-            state, state_new = state_new, None
-        print('*** Next iteration *** Iteration %d, Episode %d' % (iter,episode))
+        # Write the results of each episode to file
+        ts = dt.datetime.now()
+        outfile = open('outputs/%d%d%d_%d_%d' % (ts.year, ts.month, ts.day, ts.hour, ts.minute),'w')
+
+        for step in range(self.steps):
+            if self.log_level > 0:
+                self.FLenv.render()
+            action = self.select_action(state)
+            logging.info('Action chosen: %d',action)
+            logging.debug('Action feasible: %s', not np.isnan(self.R[state,action]))
+            state_new, _, done, _ = self.FLenv.step(action)
+            logging.info('New state is %d',state_new)
+            reward = self.R[state, action]
+            self.update_Q(state, action, reward, state_new)
+            logging.info('Q matrix updated:',self.Q)
+            if done:
+                state = self.FLenv.reset()
+                state_new = None
+                episode += 1
+            else:
+                state, state_new = state_new, None
+            logging.info('*** Next iteration *** Iteration %d, Episode %d',step,episode)
+
+        outfile.close()
+
+# if __name__ =='__main__':
+#     testLearner = FrozenQLearner(0.5,0.5,0.6)
+#     testLearner.init_R(100,0,False)
+#     print(testLearner.R)
+#     testLearner.init_Q()
+#
+#     NUM_ITERATIONS = 1000
+#
+#     # Reset the environment and return the initial state
+#     state = testLearner.FLenv.reset()
+#     print('Initial state is %d' % state)
+#
+#     episode = 0
+#
+#     for iter in range(NUM_ITERATIONS):
+#         # Display the environment for info
+#         testLearner.FLenv.render()
+#         # Select action, either random or maximum Q value
+#         action = testLearner.select_action(state)
+#         print('Action selected is %d' % action)
+#         is_feasible = not np.isnan(testLearner.R[state,action])
+#         print('Check - action selected is feasible: %s' % is_feasible)
+#         # Take the action in the environment and observe new state
+#         state_new, _, done, _ = testLearner.FLenv.step(action)
+#         print('New state is %d' % state_new)
+#         # Identify the reward of this action
+#         reward = testLearner.R[state,action]
+#         # Update Q based on the reward of the action
+#         testLearner.update_Q(state,action,reward,state_new)
+#         print('Q updated:')
+#         print(testLearner.Q)
+#         if done:
+#             state = testLearner.FLenv.reset()
+#             state_new = None
+#             episode += 1
+#         else:
+#             # Update states
+#             state, state_new = state_new, None
+#         print('*** Next iteration *** Iteration %d, Episode %d' % (iter,episode))
