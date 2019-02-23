@@ -5,7 +5,7 @@ import datetime as dt
 
 class FrozenQLearner:
 
-    def __init__(self,steps,alpha,gamma,epsilon_start,df1,df2,log_level,is_slippery=False):
+    def __init__(self,episodes,alpha,gamma,epsilon_start,df1,df2,is_slippery=False):
 
         # Initialise FL environment
         self.FLenv = FrozenLakeEnv(is_slippery=is_slippery)
@@ -28,10 +28,7 @@ class FrozenQLearner:
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon_start
-        self.steps = steps
-
-        # Initialise logging level
-        self.log_level = log_level
+        self.episodes = episodes
 
     def get_state(self, map_row, map_col):
         return map_row * self.mapLen + map_col
@@ -78,7 +75,6 @@ class FrozenQLearner:
     @staticmethod
     def rdm_opt_act(Qvals):
         max_inds = [i for i, o_a in enumerate(Qvals) if o_a == np.nanmax(Qvals)]
-        # Handle multiple optimal Q values in Q matrix by random selection of the optimal actions
         if len(max_inds) > 1:
             action = max_inds[np.random.randint(len(max_inds))]
         else:
@@ -106,9 +102,9 @@ class FrozenQLearner:
         self.epsilon = new_epsilon
 
 
-    def execute(self):
+    def execute(self,log_level,write_file,file_desc):
 
-        logging.basicConfig(level=self.log_level)
+        logging.basicConfig(level=log_level)
 
         episode = 0
         state = self.FLenv.reset()
@@ -116,67 +112,61 @@ class FrozenQLearner:
         logging.debug('Reward matrix %s',self.R)
         self.init_Q()
 
+        def episode_metrics():
+            return '%d,%d,%4.2f,%s' % (episode,ep_steps,ep_total_reward,ep_outcome)
+
+        def metric_headers():
+           return 'Episode, Steps, Total_Reward, Outcome'
+
         # Write the results of each episode to file
-        ts = dt.datetime.now()
-        outfile = open('outputs/%d%d%d_%d_%d' % (ts.year, ts.month, ts.day, ts.hour, ts.minute),'w')
+        if write_file:
+            ts = dt.datetime.now()
+            outfile = open('outputs/%d%d%d_%d_%d_%s.csv' %
+                           (ts.year, ts.month, ts.day, ts.hour, ts.minute,file_desc.replace(' ','_')),'w')
+            outfile.write(metric_headers())
 
-        for step in range(self.steps):
-            if self.log_level > 0:
-                self.FLenv.render()
-            action = self.select_action(state)
-            logging.info('Action chosen: %d',action)
-            logging.debug('Action feasible: %s', not np.isnan(self.R[state,action]))
-            state_new, _, done, _ = self.FLenv.step(action)
-            logging.info('New state is %d',state_new)
-            reward = self.R[state, action]
-            self.update_Q(state, action, reward, state_new)
-            logging.info('Q matrix updated:',self.Q)
-            if done:
-                state = self.FLenv.reset()
-                state_new = None
-                episode += 1
-            else:
+        # Start Q-learning
+        while episode < self.episodes:
+            episode_complete = False
+            step = 0
+            ep_total_reward = 0
+            while not episode_complete:
+
+                if log_level >= 0:
+                    self.FLenv.render()
+                action = self.select_action(state)
+                logging.info('Action chosen: %d',action)
+                logging.debug('Action feasible: %s', not np.isnan(self.R[state,action]))
+                state_new, _, episode_complete, _ = self.FLenv.step(action)
+
+                logging.info('New state is %d',state_new)
+                reward = self.R[state, action]
+                logging.info('Reward: %d',reward)
+                self.update_Q(state, action, reward, state_new)
+                logging.info('Q matrix updated: %s',self.Q)
                 state, state_new = state_new, None
-            logging.info('*** Next iteration *** Iteration %d, Episode %d',step,episode)
+                ep_total_reward += reward
+                logging.info('*** Next iteration *** Step %d, Episode %d',step, episode)
+                step += 1
 
-        outfile.close()
+            ep_outcome = self.map[self.from_state(state)]
+            state = self.FLenv.reset()
+            state_new = None
 
-# if __name__ =='__main__':
-#     testLearner = FrozenQLearner(0.5,0.5,0.6)
-#     testLearner.init_R(100,0,False)
-#     print(testLearner.R)
-#     testLearner.init_Q()
-#
-#     NUM_ITERATIONS = 1000
-#
-#     # Reset the environment and return the initial state
-#     state = testLearner.FLenv.reset()
-#     print('Initial state is %d' % state)
-#
-#     episode = 0
-#
-#     for iter in range(NUM_ITERATIONS):
-#         # Display the environment for info
-#         testLearner.FLenv.render()
-#         # Select action, either random or maximum Q value
-#         action = testLearner.select_action(state)
-#         print('Action selected is %d' % action)
-#         is_feasible = not np.isnan(testLearner.R[state,action])
-#         print('Check - action selected is feasible: %s' % is_feasible)
-#         # Take the action in the environment and observe new state
-#         state_new, _, done, _ = testLearner.FLenv.step(action)
-#         print('New state is %d' % state_new)
-#         # Identify the reward of this action
-#         reward = testLearner.R[state,action]
-#         # Update Q based on the reward of the action
-#         testLearner.update_Q(state,action,reward,state_new)
-#         print('Q updated:')
-#         print(testLearner.Q)
-#         if done:
-#             state = testLearner.FLenv.reset()
-#             state_new = None
-#             episode += 1
-#         else:
-#             # Update states
-#             state, state_new = state_new, None
-#         print('*** Next iteration *** Iteration %d, Episode %d' % (iter,episode))
+            # TODO change method for update epsilon (extract np.random.random from select_action)
+
+            # Calculate and report metrics for the episode
+            ep_steps = step - 1 # Account for the +=1 in each while loop
+            ep_met = episode_metrics()
+            logging.info('%s\n%s\n%s\n%s', '*' * 30,metric_headers(),ep_met, '*' * 30)
+            if write_file:
+                outfile.write(ep_met)
+
+            episode += 1
+
+        if write_file:
+            outfile.close()
+
+
+
+
