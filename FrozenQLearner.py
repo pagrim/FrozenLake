@@ -2,6 +2,7 @@ import numpy as np
 import logging
 from gym.envs.toy_text.frozen_lake import FrozenLakeEnv
 import datetime as dt
+import io
 
 class FrozenQLearner:
 
@@ -29,6 +30,8 @@ class FrozenQLearner:
         self.gamma = gamma
         self.epsilon = epsilon_start
         self.episodes = episodes
+        self.df1 = df1
+        self.df2 = df2
 
     def get_state(self, map_row, map_col):
         return map_row * self.mapLen + map_col
@@ -87,22 +90,25 @@ class FrozenQLearner:
             action = np.random.randint(self.numA)
         return action
 
-    def select_action(self,state):
+    def select_action(self,state,random_value):
         poss_Q = self.Q[state, :]
-        if np.random.random() > self.epsilon:
+        is_random = random_value < self.epsilon
+        if is_random:
             logging.debug('Selecting random action')
             poss_R = self.R[state,:]
             action = self.rdm_poss_act(poss_R,state)
         else:
             logging.debug('Selecting from Q values %s',poss_Q)
             action = self.rdm_opt_act(poss_Q)
-        return action
+        return action, is_random
 
-    def update_epsilon(self,new_epsilon):
-        self.epsilon = new_epsilon
+    def update_epsilon(self,random_value):
+        if random_value > self.epsilon:
+            self.epsilon *= self.df1
+        else:
+            self.epsilon *= self.df2
 
-
-    def execute(self,log_level,write_file,file_desc):
+    def execute(self,log_level,write_file,file_desc,in_memory=False):
 
         logging.basicConfig(level=log_level)
 
@@ -113,39 +119,51 @@ class FrozenQLearner:
         self.init_Q()
 
         def episode_metrics():
-            return '%d,%d,%4.2f,%s' % (episode,ep_steps,ep_total_reward,ep_outcome)
+            return '%d,%d,%4.2f,%s,%d,%4.2f' % (episode,ep_steps,ep_total_reward,ep_outcome,ep_steps_random,ep_epsilon_start)
 
         def metric_headers():
-           return 'Episode, Steps, Total_Reward, Outcome'
+           return 'Episode,Steps,Total_Reward,Outcome,Epsilon_start,Steps_random'
 
         # Write the results of each episode to file
         if write_file:
             ts = dt.datetime.now()
-            outfile = open('outputs/%d%d%d_%d_%d_%s.csv' %
-                           (ts.year, ts.month, ts.day, ts.hour, ts.minute,file_desc.replace(' ','_')),'w')
-            outfile.write(metric_headers())
+            if not in_memory:
+                outfile = open('outputs/%d%d%d_%d_%d_%s.csv' %
+                            (ts.year, ts.month, ts.day, ts.hour, ts.minute,file_desc.replace(' ','_')),'w')
+            else:
+                outfile = io.StringIO()
+            outfile.write('%s\n' % metric_headers())
 
         # Start Q-learning
         while episode < self.episodes:
             episode_complete = False
             step = 0
             ep_total_reward = 0
+            ep_epsilon_start = self.epsilon
+            ep_steps_random = 0
+
             while not episode_complete:
 
-                if log_level >= 0:
+                random_value = np.random.random()
+                if log_level <= 20:
                     self.FLenv.render()
-                action = self.select_action(state)
+                action, step_random = self.select_action(state,random_value)
+                ep_steps_random += int(step_random)
                 logging.info('Action chosen: %d',action)
                 logging.debug('Action feasible: %s', not np.isnan(self.R[state,action]))
                 state_new, _, episode_complete, _ = self.FLenv.step(action)
 
                 logging.info('New state is %d',state_new)
                 reward = self.R[state, action]
+                ep_total_reward += self.Q[state,action]
                 logging.info('Reward: %d',reward)
                 self.update_Q(state, action, reward, state_new)
                 logging.info('Q matrix updated: %s',self.Q)
                 state, state_new = state_new, None
-                ep_total_reward += reward
+                self.update_epsilon(random_value)
+
+                # TODO ask Jo about litviz pipeline
+
                 logging.info('*** Next iteration *** Step %d, Episode %d',step, episode)
                 step += 1
 
@@ -153,18 +171,18 @@ class FrozenQLearner:
             state = self.FLenv.reset()
             state_new = None
 
-            # TODO change method for update epsilon (extract np.random.random from select_action)
-
             # Calculate and report metrics for the episode
             ep_steps = step - 1 # Account for the +=1 in each while loop
             ep_met = episode_metrics()
             logging.info('%s\n%s\n%s\n%s', '*' * 30,metric_headers(),ep_met, '*' * 30)
             if write_file:
-                outfile.write(ep_met)
+                outfile.write('%s\n' % ep_met)
 
             episode += 1
 
         if write_file:
+            if in_memory:
+                return outfile
             outfile.close()
 
 
