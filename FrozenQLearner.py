@@ -122,7 +122,7 @@ class FrozenQLearner:
             return '%d,%d,%4.2f,%s,%d,%4.2f' % (episode,ep_steps,ep_total_reward,ep_outcome,ep_steps_random,ep_epsilon_start)
 
         def metric_headers():
-           return 'Episode,Steps,Total_Reward,Outcome,Epsilon_start,Steps_random'
+           return 'Episode,Steps,Total_Reward,Outcome,Steps_random,Epsilon_start'
 
         # Write the results of each episode to file
         if write_file:
@@ -164,7 +164,7 @@ class FrozenQLearner:
 
                 # TODO ask Jo about litviz pipeline
 
-                logging.info('*** Next iteration *** Step %d, Episode %d',step, episode)
+                logging.info('*** Completed Step %d of Episode %d ***',step, episode)
                 step += 1
 
             ep_outcome = self.map[self.from_state(state)]
@@ -172,9 +172,9 @@ class FrozenQLearner:
             state_new = None
 
             # Calculate and report metrics for the episode
-            ep_steps = step - 1 # Account for the +=1 in each while loop
+            ep_steps = step # N.B steps are numbered from 0 but +=1 in loop accounts for this
             ep_met = episode_metrics()
-            logging.info('%s\n%s\n%s\n%s', '*' * 30,metric_headers(),ep_met, '*' * 30)
+            logging.info('\nEpisode Complete\n%s\n%s\n%s\n%s', '*' * 30,metric_headers(),ep_met, '*' * 30)
             if write_file:
                 outfile.write('%s\n' % ep_met)
 
