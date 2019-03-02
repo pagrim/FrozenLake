@@ -8,7 +8,9 @@ import pandas as pd
 
 fql = FrozenQLearner(episodes=300,alpha=0.5,gamma=0.6,epsilon_start=0.9,df1=1,df2=1)
 
-output = fql.execute(log_level=30,write_file=True,file_desc='Initial test',in_memory=True)
+output = fql.execute(log_level=0,write_file=True,file_desc='Initial test',in_memory=True)
 output.seek(0)
 
 print(pd.read_csv(output).head(5))
+
+
