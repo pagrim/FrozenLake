@@ -46,9 +46,11 @@ ggplot(df_goals) + aes(x=`Episode`,y=SMA10Steps) + geom_line() + theme_classic()
 # Line plot episode against 5 episode moving average of total reward
 ggplot(df) + aes(x=`Episode`,y=SMA5TotalReward) + geom_line() + theme_light()
 
-
 # Get a subset of data with only average step metrics and unpivot
 steps <- df %>% select(Episode,SMA10Steps,SMA10RandomSteps) %>% melt(id=('Episode'))
+
+# Epsilon decay
+ggplot(df) + aes(x=`Episode`,y=Epsilon_start) + geom_line() + theme_light()
 
 ########################
 # Analysis of initial experiment
@@ -78,22 +80,48 @@ add_param_label<-function(df,param,value){
   return(df)
 }
 
-gm01 <- read.csv('201932_16_46_experiment_gamma_0.1.csv') %>% feat_eng() %>% add_param_label('gamma',0.1)
-gm03 <- read.csv('201932_16_46_experiment_gamma_0.3.csv') %>% feat_eng() %>% add_param_label('gamma',0.3)
-gm05 <- read.csv('201932_16_46_experiment_gamma_0.5.csv') %>% feat_eng() %>% add_param_label('gamma',0.5)
-gm07 <- read.csv('201932_16_46_experiment_gamma_0.7.csv') %>% feat_eng() %>% add_param_label('gamma',0.7)
-gm09 <- read.csv('201932_16_46_experiment_gamma_0.9.csv') %>% feat_eng() %>% add_param_label('gamma',0.9)
+#gm_filename <- '201932_16_46_experiment_gamma_'
+gm_filename <- '201932_19_19_experiment_gamma_'
+
+gm01 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.1)) %>% feat_eng() %>% add_param_label('gamma',0.1)
+gm03 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.3)) %>% feat_eng() %>% add_param_label('gamma',0.3)
+gm05 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.5)) %>% feat_eng() %>% add_param_label('gamma',0.5)
+gm07 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.7)) %>% feat_eng() %>% add_param_label('gamma',0.7)
+gm09 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.9)) %>% feat_eng() %>% add_param_label('gamma',0.9)
 
 gm <- rbind(gm01,gm03,gm05,gm07,gm09)
 
-# Line plot episode against 10 episode moving average of total reward of each gamma value
-#gm_rew <- cbind(gm01$SMA10TotalReward,gm03$SMA10TotalReward,gm03$SMA10TotalReward,gm)
+gm$gamma <- as.factor(gm$gamma)
 
-#gm_rew <- gm %>% select(Episode,SMA10TotalReward,gamma) %>% melt(id='Episode')
-
-gm <- gm %>% filter(gamma==c(0.3))
-
+# Line plot episode against 10 episode moving average of total reward for each gamma
 ggplot(gm) + aes(x=`Episode`,y=SMA10TotalReward,colour=gamma) + geom_line() + 
-  ylab("Moving average (n=10) total reward") + scale_y_discrete() + theme_light()
-ggsave(filename="../plots/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+  ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
+ggsave(filename="../plots/line_episode_reward_sma_gamma.jpg", plot=last_plot(),width=7,height=4,units="in")
+
+
+########################
+# Analysis of varying alpha experiment
+
+#al_filename = '201932_20_2_experiment_alpha_'
+al_filename = '201932_20_2_experiment_alpha_'
+
+al01 <- read.csv(sprintf('%s%2.1f.csv',al_filename,0.1)) %>% feat_eng() %>% add_param_label('alpha',0.1)
+al03 <- read.csv(sprintf('%s%2.1f.csv',al_filename,0.3)) %>% feat_eng() %>% add_param_label('alpha',0.3)
+al05 <- read.csv(sprintf('%s%2.1f.csv',al_filename,0.5)) %>% feat_eng() %>% add_param_label('alpha',0.5)
+
+al <- rbind(al01,al03,al05)
+al$alpha <- as.factor(al$alpha)
+
+# Line plot episode against 10 episode moving average of total reward for each alpha
+ggplot(al) + aes(x=`Episode`,y=SMA10TotalReward,colour=alpha) + geom_line() + 
+  ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
+ggsave(filename="../plots/line_episode_reward_sma_alpha.jpg", plot=last_plot(),width=7,height=4,units="in")
+
+########################
+# Analysis of varying decay factors
+
+
+
+
+
 
