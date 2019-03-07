@@ -75,6 +75,14 @@ class FrozenQLearner:
         learned_value = self.R[state_1,action] + self.gamma*self.Q[state_2,np.nanargmax(self.Q[state_2,:])]
         self.Q[state_1,action] = (1-self.alpha)*self.Q[state_1,action]+self.alpha*(learned_value)
 
+    def normalise_Q(self,norm_type):
+        if norm_type=='sum':
+            if np.nansum(self.Q) > 0:
+                self.Q = self.Q/np.nansum(self.Q)
+        elif norm_type=='max':
+            if np.nanmax(self.Q) > 0:
+                self.Q = self.Q/np.nanmax(self.Q)
+
     @staticmethod
     def rdm_opt_act(Qvals):
         max_inds = [i for i, o_a in enumerate(Qvals) if o_a == np.nanmax(Qvals)]
@@ -108,7 +116,7 @@ class FrozenQLearner:
         else:
             self.epsilon *= self.df2
 
-    def execute(self,log_level,write_file,file_desc,in_memory=False):
+    def execute(self,log_level,write_file,file_desc,norm_method='max',in_memory=False):
 
         logging.basicConfig(level=log_level)
 
@@ -117,6 +125,7 @@ class FrozenQLearner:
         self.init_R(val_goal=100,val_other=0,wall_moves=False)
         logging.debug('Reward matrix %s',self.R)
         self.init_Q()
+        self.normalise_Q(norm_method)
 
         def episode_metrics():
             return '%d,%d,%4.2f,%s,%d,%4.2f' % (episode,ep_steps,ep_total_reward,ep_outcome,ep_steps_random,ep_epsilon_start)
@@ -128,8 +137,7 @@ class FrozenQLearner:
         if write_file:
             ts = dt.datetime.now()
             if not in_memory:
-                outfile = open('outputs/%d%d%d_%d_%d_%s.csv' %
-                            (ts.year, ts.month, ts.day, ts.hour, ts.minute,file_desc.replace(' ','_')),'w')
+                outfile = open('outputs/%s.csv' % file_desc.replace(' ','_'),'w')
             else:
                 outfile = io.StringIO()
             outfile.write('%s\n' % metric_headers())
@@ -158,11 +166,10 @@ class FrozenQLearner:
                 ep_total_reward += self.Q[state,action]
                 logging.info('Reward: %d',reward)
                 self.update_Q(state, action, reward, state_new)
+                self.normalise_Q(norm_method)
                 logging.info('Q matrix updated: %s',self.Q)
                 state, state_new = state_new, None
                 self.update_epsilon(random_value)
-
-                # TODO ask Jo about litviz pipeline
 
                 logging.info('*** Completed Step %d of Episode %d ***',step, episode)
                 step += 1
