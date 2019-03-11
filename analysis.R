@@ -12,7 +12,7 @@ require(stringr)
 
 # Read in data from experiment 1
 #df <- read.csv('201932_11_54_Initial_experiment.csv')
-df <- read.csv('201937_11_54_Initial_experiment.csv')
+df <- read.csv('Initial_experiment.csv')
 
 # Feature engineering - add in moving averages to the data for plotting and bins of 100 episodes
 # for analysis of different stages
@@ -137,7 +137,7 @@ ggplot(av_reward_200_300, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward)
 
 # Looks from the heatmap like it's better to have a lower value of df1. Plot the total reward for these parameters.
 
-decfac_plot <- decfac %>% select(Episode,SMA10TotalReward,df1,df2) %>% filter(df1 %in% c('0.900000','0.990000'))
+decfac_plot <- decfac %>% select(Episode,SMA10TotalReward,df1,df2) %>% filter(df2 %in% c('0.900000','0.990000'))
 decfac_plot$df_comb <- sprintf('df1=%s, df2=%s',decfac_plot$df1,decfac_plot$df2)
 
 ggplot(decfac_plot) + aes(x=`Episode`,y=SMA10TotalReward,colour=df_comb,shape=df_comb) + 
@@ -150,8 +150,8 @@ ggplot(decfac_plot) + aes(x=`Episode`,y=SMA10TotalReward,colour=df_comb,shape=df
 ggsave(filename="../plots/line_episode_reward_sma_df1df2.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 
-decfac_eps <- decfac %>% select(Episode,Epsilon_start,df1,df2) %>% filter(df1 %in% c('0.900000','0.990000'))
-decfac_eps$df_comb <- sprintf('df1=%s, df2=%s',decfac_plot$df1,decfac_plot$df2)
+decfac_eps <- decfac %>% select(Episode,Epsilon_start,Steps_random,df1,df2) %>% filter(df2 %in% c('0.900000','0.990000'))
+decfac_eps$df_comb <- sprintf('df1=%s, df2=%s',decfac_eps$df1,decfac_eps$df2)
 
 ggplot(decfac_eps) + aes(x=`Episode`,y=Epsilon_start,colour=df_comb,shape=df_comb) + 
   geom_line() + geom_point(size=2) +
@@ -161,7 +161,15 @@ ggplot(decfac_eps) + aes(x=`Episode`,y=Epsilon_start,colour=df_comb,shape=df_com
   scale_color_discrete(name=c('Decay Factors')) + 
   theme_light()
 
-
+ggplot(decfac_eps %>% filter(df1=='0.900000'& df2=='0.900000' |  df1=='0.900000'& df2=='0.990000' | df1=='0.900000'& df2=='0.999000')) + 
+  aes(x=`Episode`,y=Epsilon_start,colour=df_comb,alpha=Steps_random) + geom_line(size=3) +
+  xlim(c(0,10)) +
+  scale_alpha_continuous(name='Random Steps') +
+  scale_color_discrete(name='Decay factors') +
+  #scale_x_continuous(trans='log10') +
+  ylab("Epsilon at episode start") + 
+  theme_light()
+ggsave(filename="../plots/line_epsilon_decay_select_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 ########################
 # Analysis of varying gamma experiment
