@@ -7,7 +7,7 @@ import io
 
 class FrozenLearner:
 
-    def __init__(self, episodes, alpha, gamma, epsilon_start, df1, df2, is_slippery=False):
+    def __init__(self, episodes, alpha, gamma, is_slippery=False):
 
         # Initialise FL environment
         self.FLenv = FrozenLakeEnv(is_slippery=is_slippery)
@@ -29,10 +29,8 @@ class FrozenLearner:
         # Initialise parameters
         self.alpha = alpha
         self.gamma = gamma
-        self.epsilon = epsilon_start
         self.episodes = episodes
-        self.df1 = df1
-        self.df2 = df2
+
 
     def get_state(self, map_row, map_col):
         return map_row * self.mapLen + map_col
@@ -72,10 +70,6 @@ class FrozenLearner:
         assert (self.R is not None), "Missing R matrix"
         self.Q = np.array([[0 if not np.isnan(el) else np.nan for el in row] for row in self.R])
 
-    def update_Q(self, state_1, action, reward, state_2):
-        learned_value = self.R[state_1, action] + self.gamma * self.Q[state_2, np.nanargmax(self.Q[state_2, :])]
-        self.Q[state_1, action] = (1 - self.alpha) * self.Q[state_1, action] + self.alpha * (learned_value)
-
     def normalise_Q(self, norm_type):
         if norm_type == 'sum':
             if np.nansum(self.Q) > 0:
@@ -93,29 +87,51 @@ class FrozenLearner:
             action = np.nanargmax(Qvals)
         return action
 
-    def rdm_poss_act(self, poss_R, state):
+    def rdm_poss_act(self, state):
         action = np.random.randint(self.numA)
         while np.isnan(self.R[state, action]):
             action = np.random.randint(self.numA)
         return action
 
-    def select_action(self, state, random_value):
-        poss_Q = self.Q[state, :]
-        is_random = random_value < self.epsilon
-        if is_random:
-            logging.debug('Selecting random action')
-            poss_R = self.R[state, :]
-            action = self.rdm_poss_act(poss_R, state)
+    # Write the results of each episode to file
+    @staticmethod
+    def open_file(in_memory,file_desc,header):
+        if not in_memory:
+            outfile = open('outputs/%s.csv' % file_desc.replace(' ', '_'), 'w')
         else:
-            logging.debug('Selecting from Q values %s', poss_Q)
-            action = self.rdm_opt_act(poss_Q)
-        return action, is_random
+            outfile = io.StringIO()
+        outfile.write('%s\n' % header)
+        return outfile
+
+
+class FrozenQLearner(FrozenLearner):
+
+    def __init__(self, episodes, alpha, gamma, epsilon_start, df1, df2, is_slippery=False):
+        super(FrozenQLearner,self).__init__(episodes,alpha,gamma,is_slippery)
+        self.epsilon = epsilon_start
+        self.df1 = df1
+        self.df2 = df2
+
+    def update_Q(self, state_1, action, reward, state_2):
+        learned_value = self.R[state_1, action] + self.gamma * self.Q[state_2, np.nanargmax(self.Q[state_2, :])]
+        self.Q[state_1, action] = (1 - self.alpha) * self.Q[state_1, action] + self.alpha * (learned_value)
 
     def update_epsilon(self, random_value):
         if random_value > self.epsilon:
             self.epsilon *= self.df1
         else:
             self.epsilon *= self.df2
+
+    def select_action(self, state, random_value):
+        poss_Q = self.Q[state, :]
+        is_random = random_value < self.epsilon
+        if is_random:
+            logging.debug('Selecting random action')
+            action = self.rdm_poss_act(state)
+        else:
+            logging.debug('Selecting from Q values %s', poss_Q)
+            action = self.rdm_opt_act(poss_Q)
+        return action, is_random
 
     def execute(self, log_level, write_file, file_desc, norm_method='max', in_memory=False):
 
@@ -126,7 +142,6 @@ class FrozenLearner:
         self.init_R(val_goal=100, val_other=0, wall_moves=False)
         logging.debug('Reward matrix %s', self.R)
         self.init_Q()
-        self.normalise_Q(norm_method)
 
         def episode_metrics():
             return '%d,%d,%4.2f,%s,%d,%4.2f' % (
@@ -135,14 +150,8 @@ class FrozenLearner:
         def metric_headers():
             return 'Episode,Steps,Total_Reward,Outcome,Steps_random,Epsilon_start'
 
-        # Write the results of each episode to file
         if write_file:
-            ts = dt.datetime.now()
-            if not in_memory:
-                outfile = open('outputs/%s.csv' % file_desc.replace(' ', '_'), 'w')
-            else:
-                outfile = io.StringIO()
-            outfile.write('%s\n' % metric_headers())
+            outfile = self.open_file(in_memory,file_desc,metric_headers())
 
         # Start Q-learning
         while episode < self.episodes:
@@ -194,7 +203,99 @@ class FrozenLearner:
                 return outfile
             outfile.close()
 
-class FrozenQLearner(FrozenLearner):
-
 
 class FrozenSarsaLearner(FrozenLearner):
+
+    def __init__(self, episodes, alpha, gamma, td_lambda, is_slippery=False):
+        super(FrozenSarsaLearner,self).__init__(episodes,alpha,gamma,is_slippery)
+        self.td_lambda = td_lambda
+
+    def init_E(self):
+        assert (self.R is not None), "Missing R matrix"
+        self.E = np.zeros((self.numS,self.numA))
+
+    def select_action(self,state):
+        poss_Q = self.Q[state, :]
+        logging.debug('Selecting from Q values %s', poss_Q)
+        return self.rdm_opt_act(poss_Q)
+
+    def update_E(self,state,action):
+        self.E *= self.gamma * self.td_lambda
+        self.E[state,action] = 1
+
+    def update_Q(self, learned_value):
+        self.Q += (self.alpha * learned_value * self.E)
+
+    def execute(self, log_level, write_file, file_desc, norm_method='max', in_memory=False):
+
+        logging.basicConfig(level=log_level)
+
+        episode = 0
+        state = self.FLenv.reset()
+        self.init_R(val_goal=100, val_other=0, wall_moves=False)
+        logging.debug('Reward matrix %s', self.R)
+        self.init_Q()
+        self.init_E()
+
+        def episode_metrics():
+            return '%d,%d,%4.2f,%s,%d,%4.2f' % (episode, ep_steps, ep_total_reward, ep_outcome)
+
+        def metric_headers():
+            return 'Episode,Steps,Total_Reward,Outcome'
+
+        # Write the results of each episode to file
+        if write_file:
+            outfile = self.open_file(in_memory, file_desc, metric_headers())
+
+        # Start SARSA
+        action = self.rdm_poss_act(state)
+        while episode < self.episodes:
+            episode_complete = False
+            step = 0
+            ep_total_reward = 0
+
+            while not episode_complete:
+
+                if log_level <= 20:
+                    self.FLenv.render()
+                reward = self.R[state, action]
+                logging.info('Reward: %d', reward)
+                state_new, _, episode_complete, _ = self.FLenv.step(action)
+                logging.info('New state is %d', state_new)
+                # TODO investigate why unfeasible actions seeminly being seleted
+                action_new = self.select_action(state_new)
+                logging.info('Action chosen: %d', action)
+                logging.debug('Action feasible: %s', not np.isnan(self.R[state, action]))
+                self.update_E(state,action)
+                logging.info('E matrix updated: %s',self.E)
+                # TODO investigate why nan learned values occuring
+                learned_value = self.R[state,action] + self.gamma * (self.Q[state_new,action_new]-self.Q[state,action])
+                logging.debug('Learned value: %4.2d',learned_value)
+                self.update_Q(learned_value)
+                logging.info('Q matrix updated: %s', self.Q)
+
+                ep_total_reward += self.Q[state, action]
+                self.normalise_Q(norm_method)
+
+                state, state_new = state_new, None
+
+                logging.info('*** Completed Step %d of Episode %d ***', step, episode)
+                step += 1
+
+            ep_outcome = self.map[self.from_state(state)]
+            state = self.FLenv.reset()
+            state_new = None
+
+            # Calculate and report metrics for the episode
+            ep_steps = step  # N.B steps are numbered from 0 but +=1 in loop accounts for this
+            ep_met = episode_metrics()
+            logging.info('\nEpisode Complete\n%s\n%s\n%s\n%s', '*' * 30, metric_headers(), ep_met, '*' * 30)
+            if write_file:
+                outfile.write('%s\n' % ep_met)
+
+            episode += 1
+
+        if write_file:
+            if in_memory:
+                return outfile
+            outfile.close()
