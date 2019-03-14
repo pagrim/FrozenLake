@@ -81,6 +81,7 @@ class FrozenLearner:
     @staticmethod
     def rdm_opt_act(Qvals):
         max_inds = [i for i, o_a in enumerate(Qvals) if o_a == np.nanmax(Qvals)]
+        logging.debug('Indices of optimal actions %s',max_inds)
         if len(max_inds) > 1:
             action = max_inds[np.random.randint(len(max_inds))]
         else:
@@ -238,7 +239,7 @@ class FrozenSarsaLearner(FrozenLearner):
         self.init_E()
 
         def episode_metrics():
-            return '%d,%d,%4.2f,%s,%d,%4.2f' % (episode, ep_steps, ep_total_reward, ep_outcome)
+            return '%d,%d,%4.2f,%s' % (episode, ep_steps, ep_total_reward, ep_outcome)
 
         def metric_headers():
             return 'Episode,Steps,Total_Reward,Outcome'
@@ -248,27 +249,26 @@ class FrozenSarsaLearner(FrozenLearner):
             outfile = self.open_file(in_memory, file_desc, metric_headers())
 
         # Start SARSA
-        action = self.rdm_poss_act(state)
         while episode < self.episodes:
             episode_complete = False
             step = 0
             ep_total_reward = 0
+            action = self.rdm_poss_act(state)
 
             while not episode_complete:
 
                 if log_level <= 20:
                     self.FLenv.render()
                 reward = self.R[state, action]
+                logging.debug('State %d,action %d before reward',state,action)
                 logging.info('Reward: %d', reward)
                 state_new, _, episode_complete, _ = self.FLenv.step(action)
                 logging.info('New state is %d', state_new)
-                # TODO investigate why unfeasible actions seeminly being seleted
                 action_new = self.select_action(state_new)
-                logging.info('Action chosen: %d', action)
-                logging.debug('Action feasible: %s', not np.isnan(self.R[state, action]))
+                logging.info('New action chosen: %d', action_new)
+                logging.debug('New action feasible: %s', not np.isnan(self.R[state_new, action_new]))
                 self.update_E(state,action)
                 logging.info('E matrix updated: %s',self.E)
-                # TODO investigate why nan learned values occuring
                 learned_value = self.R[state,action] + self.gamma * (self.Q[state_new,action_new]-self.Q[state,action])
                 logging.debug('Learned value: %4.2d',learned_value)
                 self.update_Q(learned_value)
@@ -278,6 +278,7 @@ class FrozenSarsaLearner(FrozenLearner):
                 self.normalise_Q(norm_method)
 
                 state, state_new = state_new, None
+                action, action_new = action_new, None
 
                 logging.info('*** Completed Step %d of Episode %d ***', step, episode)
                 step += 1

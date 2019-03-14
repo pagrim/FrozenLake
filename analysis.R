@@ -217,7 +217,7 @@ ggplot(al) + aes(x=`Episode`,y=SMA10TotalReward,colour=alpha) + geom_line() +
   ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
 ggsave(filename="../plots/line_episode_reward_sma_alpha.jpg", plot=last_plot(),width=7,height=4,units="in")
 
-
+srq <- read.csv('Initial_SARSA_experiment.csv')
 
 
 
