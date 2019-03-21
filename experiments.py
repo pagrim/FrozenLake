@@ -27,5 +27,21 @@ from sklearn.model_selection import ParameterGrid
 
 
 # Initial SARSA experiment, set lambda to 0 for Q-learning
-fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=0)
-fsl.execute(log_level=0,write_file=True,file_desc='Initial SARSA experiment')
+#fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=0.5)
+#fsl.execute(log_level=30,write_file=True,file_desc='Initial SARSA experiment',select_method='random')
+
+# SARSA experiment, set lambda to 1 for Monte Carlo
+#fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.9,td_lambda=0.9)
+#fsl.execute(log_level=30,write_file=True,file_desc='SARSA MC experiment',select_method='random')
+
+
+# Experiment with different lambda values
+# for test_lambda in np.arange(0.1,1.0,0.2):
+#     fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=test_lambda)
+#     fsl.execute(log_level=0,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}'.format(test_lambda),
+#                 select_method='random')
+
+for test_lambda in np.arange(0.1,1.0,0.2):
+    fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=test_lambda)
+    fsl.execute(log_level=30,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum'.format(test_lambda),
+                select_method='random',norm_method='sum')

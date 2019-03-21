@@ -1,16 +1,22 @@
 import numpy as np
 import logging
-from gym.envs.toy_text.frozen_lake import FrozenLakeEnv
-import datetime as dt
 import io
+
+from gym.envs.registration import register
+from gym import make
+register(
+    id='FrozenLakeNotSlippery-v0',
+    entry_point='gym.envs.toy_text:FrozenLakeEnv',
+    kwargs={'map_name' : '4x4', 'is_slippery': False}
+)
 
 
 class FrozenLearner:
 
-    def __init__(self, episodes, alpha, gamma, is_slippery=False):
+    def __init__(self, episodes, alpha, gamma):
 
         # Initialise FL environment
-        self.FLenv = FrozenLakeEnv(is_slippery=is_slippery)
+        self.FLenv = make('FrozenLakeNotSlippery-v0')
         self.map = map = self.FLenv.desc
 
         # Check the map row sizes are consistent
@@ -78,19 +84,21 @@ class FrozenLearner:
             if np.nanmax(self.Q) > 0:
                 self.Q = self.Q / np.nanmax(self.Q)
 
-    @staticmethod
-    def rdm_opt_act(Qvals):
-        max_inds = [i for i, o_a in enumerate(Qvals) if o_a == np.nanmax(Qvals)]
+    def rdm_opt_act(self,state):
+        poss_Q = self.Q[state, :]
+        max_inds = [i for i, o_a in enumerate(poss_Q) if o_a == np.nanmax(poss_Q)]
         logging.debug('Indices of optimal actions %s',max_inds)
         if len(max_inds) > 1:
             action = max_inds[np.random.randint(len(max_inds))]
         else:
-            action = np.nanargmax(Qvals)
+            action = np.nanargmax(poss_Q)
         return action
 
     def rdm_poss_act(self, state):
+        poss_Q = self.Q[state, :]
+        logging.debug('Selecting from Q values %s', poss_Q)
         action = np.random.randint(self.numA)
-        while np.isnan(self.R[state, action]):
+        while np.isnan(poss_Q[action]):
             action = np.random.randint(self.numA)
         return action
 
@@ -107,8 +115,8 @@ class FrozenLearner:
 
 class FrozenQLearner(FrozenLearner):
 
-    def __init__(self, episodes, alpha, gamma, epsilon_start, df1, df2, is_slippery=False):
-        super(FrozenQLearner,self).__init__(episodes,alpha,gamma,is_slippery)
+    def __init__(self, episodes, alpha, gamma, epsilon_start, df1, df2):
+        super(FrozenQLearner,self).__init__(episodes,alpha,gamma)
         self.epsilon = epsilon_start
         self.df1 = df1
         self.df2 = df2
@@ -124,14 +132,12 @@ class FrozenQLearner(FrozenLearner):
             self.epsilon *= self.df2
 
     def select_action(self, state, random_value):
-        poss_Q = self.Q[state, :]
         is_random = random_value < self.epsilon
         if is_random:
             logging.debug('Selecting random action')
             action = self.rdm_poss_act(state)
         else:
-            logging.debug('Selecting from Q values %s', poss_Q)
-            action = self.rdm_opt_act(poss_Q)
+            action = self.rdm_opt_act(state)
         return action, is_random
 
     def execute(self, log_level, write_file, file_desc, norm_method='max', in_memory=False):
@@ -141,6 +147,8 @@ class FrozenQLearner(FrozenLearner):
         episode = 0
         state = self.FLenv.reset()
         self.init_R(val_goal=100, val_other=0, wall_moves=False)
+        logging.info('%s\nRunning Q-learning Experiment\n alpha=%3.2f,gamma=%3.2f,epsilon_start=%3.2f,''df1=%3.2f,'
+                     'df2=%3.2f \n%s','*' * 30, self.alpha, self.gamma,self.epsilon,self.df1,self.df2, '*' * 30)
         logging.debug('Reward matrix %s', self.R)
         self.init_Q()
 
@@ -175,11 +183,11 @@ class FrozenQLearner(FrozenLearner):
 
                 logging.info('New state is %d', state_new)
                 reward = self.R[state, action]
-                ep_total_reward += self.Q[state, action]
                 logging.info('Reward: %d', reward)
                 self.update_Q(state, action, reward, state_new)
                 self.normalise_Q(norm_method)
                 logging.info('Q matrix updated: %s', self.Q)
+                ep_total_reward += self.Q[state, action]
                 state, state_new = state_new, None
                 self.update_epsilon(random_value)
 
@@ -212,13 +220,17 @@ class FrozenSarsaLearner(FrozenLearner):
         self.td_lambda = td_lambda
 
     def init_E(self):
-        assert (self.R is not None), "Missing R matrix"
         self.E = np.zeros((self.numS,self.numA))
 
-    def select_action(self,state):
+    def select_action(self,state,method):
         poss_Q = self.Q[state, :]
         logging.debug('Selecting from Q values %s', poss_Q)
-        return self.rdm_opt_act(poss_Q)
+        if method=='random':
+            return self.rdm_opt_act(state)
+        elif method=='non-random':
+            return np.nanargmax(poss_Q)
+        else:
+            raise ValueError('Unknown method')
 
     def update_E(self,state,action):
         self.E *= self.gamma * self.td_lambda
@@ -227,13 +239,15 @@ class FrozenSarsaLearner(FrozenLearner):
     def update_Q(self, learned_value):
         self.Q += (self.alpha * learned_value * self.E)
 
-    def execute(self, log_level, write_file, file_desc, norm_method='max', in_memory=False):
+    def execute(self, log_level, write_file, file_desc, norm_method='max', select_method='non-random', in_memory=False):
 
         logging.basicConfig(level=log_level)
 
         episode = 0
         state = self.FLenv.reset()
         self.init_R(val_goal=100, val_other=0, wall_moves=False)
+        logging.info('%s\nRunning SARSA Experiment\n alpha=%3.2f,gamma=%3.2f,lambda=%3.2f \n%s',
+                     '*' * 30, self.alpha, self.gamma,self.td_lambda, '*' * 30)
         logging.debug('Reward matrix %s', self.R)
         self.init_Q()
         self.init_E()
@@ -253,7 +267,8 @@ class FrozenSarsaLearner(FrozenLearner):
             episode_complete = False
             step = 0
             ep_total_reward = 0
-            action = self.rdm_poss_act(state)
+            action = self.rdm_opt_act(state)
+            self.init_E()
 
             while not episode_complete:
 
@@ -264,18 +279,18 @@ class FrozenSarsaLearner(FrozenLearner):
                 logging.info('Reward: %d', reward)
                 state_new, _, episode_complete, _ = self.FLenv.step(action)
                 logging.info('New state is %d', state_new)
-                action_new = self.select_action(state_new)
+                action_new = self.select_action(state_new,select_method)
                 logging.info('New action chosen: %d', action_new)
                 logging.debug('New action feasible: %s', not np.isnan(self.R[state_new, action_new]))
                 self.update_E(state,action)
                 logging.info('E matrix updated: %s',self.E)
                 learned_value = self.R[state,action] + self.gamma * (self.Q[state_new,action_new]-self.Q[state,action])
-                logging.debug('Learned value: %4.2d',learned_value)
+                logging.debug('Learned value: %4.2f',learned_value)
                 self.update_Q(learned_value)
+                self.normalise_Q(norm_method)
                 logging.info('Q matrix updated: %s', self.Q)
 
                 ep_total_reward += self.Q[state, action]
-                self.normalise_Q(norm_method)
 
                 state, state_new = state_new, None
                 action, action_new = action_new, None

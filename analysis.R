@@ -22,8 +22,10 @@ feat_eng <- function(df){
   df$SMA10Steps <- SMA(df$Steps,n=10)
   df$SMA5TotalReward <- SMA(df$Total_Reward,n=5)
   df$SMA10TotalReward <- SMA(df$Total_Reward,n=10)
-  df$SMA5RandomSteps <- SMA(df$Steps_random,n=5)
-  df$SMA10RandomSteps <- SMA(df$Steps_random,n=10)
+  if('Steps_random' %in% colnames(df)){
+    df$SMA5RandomSteps <- SMA(df$Steps_random,n=5)
+    df$SMA10RandomSteps <- SMA(df$Steps_random,n=10)  
+  }
   episode_max <- max(df$Episode)
   episode_min <- min(df$Episode)
   df$Episode_cent <- cut(df$Episode,breaks=seq(episode_min,episode_max+1,100),include.lowest = TRUE)
@@ -217,8 +219,90 @@ ggplot(al) + aes(x=`Episode`,y=SMA10TotalReward,colour=alpha) + geom_line() +
   ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
 ggsave(filename="../plots/line_episode_reward_sma_alpha.jpg", plot=last_plot(),width=7,height=4,units="in")
 
-srq <- read.csv('Initial_SARSA_experiment.csv')
+########################
+# Analysis of initial SARSA experiment
 
+srq <- read.csv('Initial_SARSA_experiment.csv')
+srq <- feat_eng(srq)
+
+# Scatter plot episode against 5 episode moving average of steps
+ggplot(srq) + aes(x=`Episode`,y=SMA5Steps,color=`Outcome`) + geom_point(size=2) +
+  ylab("Steps") + theme_light()
+ggsave(filename="../plots/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
+
+# Line plot episode against 10 episode moving average of total reward
+ggplot(srq) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + 
+  ylab("Moving average (n=10) total reward") + theme_light()
+ggsave(filename="../plots/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+
+# Line plot episode against 10 episode moving average of steps
+ggplot(srq) + aes(x=`Episode`,y=SMA10Steps) + geom_line() + ylab("Moving Average Number of Steps in episode (n=10)") +
+  scale_color_hue(labels = c("Total Steps", "Random Steps"),name="Metric") +
+  theme_light()
+ggsave(filename="../plots/line_episode_steps_random_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+
+########################
+# Analysis of varying lambda
+
+lambda_vals <- seq(from=0.1,to=1,by=0.2)
+srq_lams <- lapply(lambda_vals,function(lambda) {
+  read.csv(sprintf('experiment_SARSA_lambda_%3.2f.csv',lambda)) %>%
+    feat_eng() %>%
+    add_param_label('lambda',lambda)
+})
+
+srq_lam <- bind_rows(srq_lams)
+srq_lam$lambda <- as.factor(srq_lam$lambda)
+
+# Line plot episode against 10 episode moving average of total reward for each gamma
+ggplot(srq_lam) + aes(x=Episode,y=SMA10TotalReward,colour=lambda) + geom_line() + 
+  ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
+
+# Line plot episode total reward
+ggplot(srq_lam) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() + 
+  ylab("Total reward") + scale_color_discrete() + theme_light()
+
+########################
+# Analysis of varying lambda with norm method set to sum
+
+lambda_vals <- seq(from=0.1,to=1,by=0.2)
+srq_lams_normsum <- lapply(lambda_vals,function(lambda) {
+  read.csv(sprintf('experiment_SARSA_lambda_%3.2f_normsum.csv',lambda)) %>%
+    feat_eng() %>%
+    add_param_label('lambda',lambda)
+})
+
+srq_lam_normsum <- bind_rows(srq_lams_normsum)
+srq_lam_normsum$lambda <- as.factor(srq_lam_normsum$lambda)
+
+# Line plot episode against 10 episode moving average of total reward for each gamma
+ggplot(srq_lam_normsum) + aes(x=Episode,y=SMA10TotalReward,colour=lambda) + geom_line() + 
+  ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
+
+# Line plot episode total reward
+ggplot(srq_lam_normsum) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() + 
+  ylab("Total reward") + scale_color_discrete() + theme_light()
+ggsave(filename="../plots/sarsa_lambdas_totalreward_normsum.jpg", plot=last_plot(),width=7,height=4,units="in")
+
+
+########################
+# Analysis of MC SARCA experiment, lambda=1
+
+srq_mc <- read.csv('SARSA_MC_experiment.csv')
+srq_mc <- feat_eng(srq_mc)
+
+# Scatter plot episode against 5 episode moving average of steps
+ggplot(srq_mc) + aes(x=`Episode`,y=SMA5Steps,color=`Outcome`) + geom_point(size=2) +
+  ylab("Steps") + theme_light()
+
+# Line plot episode against 10 episode moving average of total reward
+ggplot(srq_mc) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + 
+  ylab("Moving average (n=10) total reward") + theme_light()
+
+# Line plot episode against 10 episode moving average of steps
+ggplot(srq_mc) + aes(x=`Episode`,y=SMA10Steps) + geom_line() + ylab("Moving Average Number of Steps in episode (n=10)") +
+  scale_color_hue(labels = c("Total Steps", "Random Steps"),name="Metric") +
+  theme_light()
 
 
 
