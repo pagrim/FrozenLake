@@ -215,8 +215,8 @@ class FrozenQLearner(FrozenLearner):
 
 class FrozenSarsaLearner(FrozenLearner):
 
-    def __init__(self, episodes, alpha, gamma, td_lambda, is_slippery=False):
-        super(FrozenSarsaLearner,self).__init__(episodes,alpha,gamma,is_slippery)
+    def __init__(self, episodes, alpha, gamma, td_lambda):
+        super(FrozenSarsaLearner,self).__init__(episodes,alpha,gamma)
         self.td_lambda = td_lambda
 
     def init_E(self):
