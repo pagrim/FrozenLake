@@ -41,7 +41,12 @@ from sklearn.model_selection import ParameterGrid
 #     fsl.execute(log_level=0,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}'.format(test_lambda),
 #                 select_method='random')
 
-for test_lambda in np.arange(0.1,1.0,0.2):
+# for test_lambda in np.arange(0.1,1.0,0.2):
+#     fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=test_lambda)
+#     fsl.execute(log_level=30,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum_2'.format(test_lambda),
+#                 select_method='random',norm_method='sum')
+
+for test_lambda in np.arange(0,1.25,0.25):
     fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=test_lambda)
-    fsl.execute(log_level=30,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum'.format(test_lambda),
+    fsl.execute(log_level=0,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum_full'.format(test_lambda),
                 select_method='random',norm_method='sum')
