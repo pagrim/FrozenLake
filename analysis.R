@@ -11,7 +11,6 @@ require(reshape2)
 require(stringr)
 
 # Read in data from experiment 1
-#df <- read.csv('201932_11_54_Initial_experiment.csv')
 df <- read.csv('Initial_experiment.csv')
 
 # Feature engineering - add in moving averages to the data for plotting and bins of 100 episodes
@@ -103,7 +102,7 @@ ggsave(filename="../plots/line_episode_steps_random_sma.jpg", plot=last_plot(),w
 
 
 ########################
-# Analysis of varying decay factors
+# Analysis of experiment 2; varying decay factors
 
 # Load CSV files from decay factor experiment
 file_list <- list.files(pattern="experiment_dfs_.*.csv")
@@ -114,18 +113,19 @@ for(i in 1:length(dfs)){
   dfs[[i]]$df1 <- params[[i]][1]
   dfs[[i]]$df2 <- params[[i]][2]
 }
-
 decfac <- bind_rows(dfs)
 
-av_reward_400_500 <- decfac %>% filter(Episode_cent=='(400,500]') %>% select(df1,df2,Total_Reward) %>%
+# Analysis of the total reward within bins of 100 episodes
+decfac_reward_400_500 <- decfac %>% filter(Episode_cent=='(400,500]') %>% select(df1,df2,Total_Reward) %>%
   group_by(df1,df2) %>% summarise(av_total_reward = mean(Total_Reward))
 
-av_reward_300_400 <- decfac %>% filter(Episode_cent=='(300,400]') %>% select(df1,df2,Total_Reward) %>%
+decfac_reward_300_400 <- decfac %>% filter(Episode_cent=='(300,400]') %>% select(df1,df2,Total_Reward) %>%
   group_by(df1,df2) %>% summarise(av_total_reward = mean(Total_Reward))
 
-av_reward_200_300 <- decfac %>% filter(Episode_cent=='(200,300]') %>% select(df1,df2,Total_Reward) %>%
+decfac_reward_200_300 <- decfac %>% filter(Episode_cent=='(200,300]') %>% select(df1,df2,Total_Reward) %>%
   group_by(df1,df2) %>% summarise(av_total_reward = mean(Total_Reward))
 
+# Plot the total rewards in a heat map for each group of 100 episodes
 ggplot(av_reward_400_500, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
 ggsave(filename="../plots/heatmap_400_500_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
@@ -138,7 +138,6 @@ ggplot(av_reward_200_300, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward)
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
 
 # Looks from the heatmap like it's better to have a lower value of df1. Plot the total reward for these parameters.
-
 decfac_plot <- decfac %>% select(Episode,SMA10TotalReward,df1,df2) %>% filter(df2 %in% c('0.900000','0.990000'))
 decfac_plot$df_comb <- sprintf('df1=%s, df2=%s',decfac_plot$df1,decfac_plot$df2)
 
@@ -173,33 +172,42 @@ ggplot(decfac_eps %>% filter(df1=='0.900000'& df2=='0.900000' |  df1=='0.900000'
   theme_light()
 ggsave(filename="../plots/line_epsilon_decay_select_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
 
+# Quantitative analysis of decay factor experiment
+
+min(decfac_reward_400_500$av_total_reward)
+max(decfac_reward_400_500$av_total_reward)
+
+
 ########################
 # Analysis of varying gamma experiment
 
-#gm_filename <- '201932_16_46_experiment_gamma_'
-#gm_filename <- '201932_19_19_experiment_gamma_'
-gm_filename <- '201937_12_2_experiment_gamma_'
+gamma_vals <- seq(from=0.1,to=1,by=0.2)
+gms <- lapply(gamma_vals,function(gamma) {
+  read.csv(sprintf('experiment_gamma_%2.1f.csv',gamma)) %>%
+    feat_eng() %>%
+    add_param_label('gamma',gamma)
+})
 
-gm01 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.1)) %>% feat_eng() %>% add_param_label('gamma',0.1)
-gm03 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.3)) %>% feat_eng() %>% add_param_label('gamma',0.3)
-gm05 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.5)) %>% feat_eng() %>% add_param_label('gamma',0.5)
-gm07 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.7)) %>% feat_eng() %>% add_param_label('gamma',0.7)
-gm09 <- read.csv(sprintf('%s%2.1f.csv',gm_filename,0.9)) %>% feat_eng() %>% add_param_label('gamma',0.9)
-
-gm <- rbind(gm01,gm03,gm05,gm07,gm09)
-
+gm <- bind_rows(gms)
 gm$gamma <- as.factor(gm$gamma)
 
 # Line plot episode against 10 episode moving average of total reward for each gamma
 ggplot(gm) + aes(x=`Episode`,y=SMA10TotalReward,colour=gamma) + geom_line() + 
   ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
-ggsave(filename="../plots/line_episode_reward_sma_gamma.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/line_episode_reward_sma_gamma_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
+
+# Line plot episode against 10 episode moving average of total reward for each gamma
+ggplot(gm) + aes(x=`Episode`,y=Total_Reward,colour=gamma) + geom_line() + 
+  ylab("Moving average total reward") + scale_color_discrete() + theme_light()
+
 
 # Quantitative analysis
-gm01 %>% summary()
+gamma_mean_var <- gm %>% select(Episode_cent,Total_Reward,gamma) %>% group_by(Episode_cent,gamma) %>% 
+  summarise(av_total_reward = mean(Total_Reward),var_total_reward=var(Total_Reward)) %>% 
+  filter(Episode_cent %in% c('[0,100]','(100,200]','(200,300]'))
 
-gm %>% select(Episode_cent,Total_Reward,gamma) %>% group_by(Episode_cent,gamma) %>% 
-  summarise(av_total_reward = mean(Total_Reward)) %>% dcast(Episode_cent ~ gamma) %>% 
+dcast(gamma_mean_var, Episode_cent ~ gamma,value.var=c('av_total_reward')) %>% 
+  bind_cols(dcast(gamma_mean_var,Episode_cent ~ gamma,value.var=c('var_total_reward'))) %>% View()
 
 ########################
 # Analysis of varying alpha experiment
@@ -278,6 +286,25 @@ srq_lam_normsum$lambda <- as.factor(srq_lam_normsum$lambda)
 # Line plot episode against 10 episode moving average of total reward for each gamma
 ggplot(srq_lam_normsum) + aes(x=Episode,y=SMA10TotalReward,colour=lambda) + geom_line() + 
   ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
+
+# Line plot episode total reward
+ggplot(srq_lam_normsum) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() + 
+  ylab("Total reward") + scale_color_discrete() + theme_light()
+
+
+
+########################
+# Analysis of varying lambda with norm method sum and trying full range of lambdas
+
+lambda_vals <- seq(from=0,to=1,by=0.25)
+srq_lams_normsum <- lapply(lambda_vals,function(lambda) {
+  read.csv(sprintf('experiment_SARSA_lambda_%3.2f_normsum_full.csv',lambda)) %>%
+    feat_eng() %>%
+    add_param_label('lambda',lambda)
+})
+
+srq_lam_normsum <- bind_rows(srq_lams_normsum)
+srq_lam_normsum$lambda <- as.factor(srq_lam_normsum$lambda)
 
 # Line plot episode total reward
 ggplot(srq_lam_normsum) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() + 

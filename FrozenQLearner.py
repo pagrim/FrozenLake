@@ -122,7 +122,7 @@ class FrozenQLearner(FrozenLearner):
         self.df2 = df2
 
     def update_Q(self, state_1, action, reward, state_2):
-        learned_value = self.R[state_1, action] + self.gamma * self.Q[state_2, np.nanargmax(self.Q[state_2, :])]
+        learned_value = reward + self.gamma * self.Q[state_2, np.nanargmax(self.Q[state_2, :])]
         self.Q[state_1, action] = (1 - self.alpha) * self.Q[state_1, action] + self.alpha * (learned_value)
 
     def update_epsilon(self, random_value):

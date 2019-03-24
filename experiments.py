@@ -17,7 +17,7 @@ from sklearn.model_selection import ParameterGrid
 
 # Experiment in varying gamma
 # for gamma_test in np.arange(0.1,1.0,0.2):
-#     fql = FrozenQLearner(episodes=500, alpha=0.1, gamma=gamma_test, epsilon_start=0.9, df1=0.9999, df2=0.99)
+#     fql = FrozenQLearner(episodes=500, alpha=0.1, gamma=gamma_test, epsilon_start=0.9, df1=0.9, df2=0.99)
 #     fql.execute(log_level=30, write_file=True, file_desc='experiment_gamma_%2.1f' % gamma_test, in_memory=False)
 
 # Experiment in varying alpha
@@ -46,7 +46,7 @@ from sklearn.model_selection import ParameterGrid
 #     fsl.execute(log_level=30,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum_2'.format(test_lambda),
 #                 select_method='random',norm_method='sum')
 
-for test_lambda in np.arange(0,1.25,0.25):
-    fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=test_lambda)
-    fsl.execute(log_level=0,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum_full'.format(test_lambda),
-                select_method='random',norm_method='sum')
+# for test_lambda in np.arange(0,1.25,0.25):
+#     fsl = FrozenSarsaLearner(episodes=500,alpha=0.1,gamma=0.7,td_lambda=test_lambda)
+#     fsl.execute(log_level=0,write_file=True,file_desc='experiment_SARSA_lambda_{:4.2f}_normsum_full'.format(test_lambda),
+#                 select_method='random',norm_method='sum')
