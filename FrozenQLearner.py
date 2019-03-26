@@ -180,9 +180,20 @@ class FrozenQLearner(FrozenLearner):
         self.df2 = df2
 
     def update_Q(self, state_1, action, reward, state_2):
+        """ Updates the Q matrix based on the Q-learning update rule
+        :param state_1: int
+            the state at time t
+        :param action: int
+            the action at time t
+        :param reward: float
+            the reward at time t
+        :param state_2: int
+            the state at time t+1
+        """
         learned_value = reward + self.gamma * self.Q[state_2, np.nanargmax(self.Q[state_2, :])]
         self.Q[state_1, action] = (1 - self.alpha) * self.Q[state_1, action] + self.alpha * (learned_value)
 
+    # Multiplies epsilon by the relevant decay factor
     def update_epsilon(self, random_value):
         if random_value > self.epsilon:
             self.epsilon *= self.df1
@@ -190,6 +201,14 @@ class FrozenQLearner(FrozenLearner):
             self.epsilon *= self.df2
 
     def select_action(self, state, random_value):
+        """ Selects either a random action or argmax Q value depending on the values of epsilon and random_value
+        :param state: int
+            current state
+        :param random_value: float
+            a randomly generated number for the current step
+        :return action, is_random: int, bool
+             action selected, whether this was random
+        """
         is_random = random_value < self.epsilon
         if is_random:
             logging.debug('Selecting random action')
@@ -199,6 +218,18 @@ class FrozenQLearner(FrozenLearner):
         return action, is_random
 
     def execute(self, log_level, write_file, file_desc, norm_method='max', in_memory=False):
+        """ Main method to run the Q-learning algorithm
+        :param log_level: int
+            Number between 0 and 50; 0 logs everything, see documentation for logging package
+        :param write_file: bool
+            Indicates whether to create an output file
+        :param file_desc: str
+            Description for the output file
+        :param norm_method: str
+            Method of normalisation
+        :param in_memory: bool
+            Should the ouput file be returned in memmory
+        """
 
         logging.basicConfig(level=log_level)
 
@@ -210,10 +241,12 @@ class FrozenQLearner(FrozenLearner):
         logging.debug('Reward matrix %s', self.R)
         self.init_Q()
 
+        # Define the data to record for each episode
         def episode_metrics():
             return '%d,%d,%4.2f,%s,%d,%4.2f' % (
             episode, ep_steps, ep_total_reward, ep_outcome, ep_steps_random, ep_epsilon_start)
 
+        # Define the headers for the recorded data
         def metric_headers():
             return 'Episode,Steps,Total_Reward,Outcome,Steps_random,Epsilon_start'
 
@@ -234,9 +267,11 @@ class FrozenQLearner(FrozenLearner):
                 if log_level <= 20:
                     self.FLenv.render()
                 action, step_random = self.select_action(state, random_value)
+                # Record whether the step was random
                 ep_steps_random += int(step_random)
                 logging.info('Action chosen: %d', action)
                 logging.debug('Action feasible: %s', not np.isnan(self.R[state, action]))
+                # Implement the action in the Frozen Lake environment
                 state_new, _, episode_complete, _ = self.FLenv.step(action)
 
                 logging.info('New state is %d', state_new)
@@ -245,6 +280,7 @@ class FrozenQLearner(FrozenLearner):
                 self.update_Q(state, action, reward, state_new)
                 self.normalise_Q(norm_method)
                 logging.info('Q matrix updated: %s', self.Q)
+                # Add the reward for this step to the cumulative reward for the episode
                 ep_total_reward += self.Q[state, action]
                 state, state_new = state_new, None
                 self.update_epsilon(random_value)
@@ -257,7 +293,7 @@ class FrozenQLearner(FrozenLearner):
             state_new = None
 
             # Calculate and report metrics for the episode
-            ep_steps = step  # N.B steps are numbered from 0 but +=1 in loop accounts for this
+            ep_steps = step
             ep_met = episode_metrics()
             logging.info('\nEpisode Complete\n%s\n%s\n%s\n%s', '*' * 30, metric_headers(), ep_met, '*' * 30)
             if write_file:
@@ -272,32 +308,62 @@ class FrozenQLearner(FrozenLearner):
 
 
 class FrozenSarsaLearner(FrozenLearner):
+    """Implementation of the SARSA algorithm proposed by Rummery and Niranjan (1994)"""
 
     def __init__(self, episodes, alpha, gamma, td_lambda):
+        """
+        :param episodes: int
+            maximum number of epsiodes for SARSA
+        :param alpha: float
+            learning rate
+        :param gamma: float
+            discount for future rewards
+        :param td_lambda: float
+            discount parameter for eligibility traces, lambda=0 => ~ Q-learning and lambda =1 => ~ Monte Carlo
+        """
         super(FrozenSarsaLearner,self).__init__(episodes,alpha,gamma)
         self.td_lambda = td_lambda
 
+    # Initialise the E matrix of eligibility traces
     def init_E(self):
         self.E = np.zeros((self.numS,self.numA))
 
-    def select_action(self,state,method):
+    # Select an action based on the method parameter passed at runtime
+    def select_action(self, state, method):
         poss_Q = self.Q[state, :]
         logging.debug('Selecting from Q values %s', poss_Q)
-        if method=='random':
+        if method=='argmax_rand':
             return self.rdm_opt_act(state)
-        elif method=='non-random':
+        elif method=='argmax_true':
             return np.nanargmax(poss_Q)
         else:
             raise ValueError('Unknown method')
 
-    def update_E(self,state,action):
+    def update_E(self, state, action):
         self.E *= self.gamma * self.td_lambda
         self.E[state,action] = 1
 
     def update_Q(self, learned_value):
         self.Q += (self.alpha * learned_value * self.E)
 
+    def learned_value(self,state,action,state_new,action_new):
+        return self.R[state, action] + self.gamma * (self.Q[state_new, action_new] - self.Q[state, action])
+
     def execute(self, log_level, write_file, file_desc, norm_method='max', select_method='non-random', in_memory=False):
+        """ Main method to run the SARSA algorithm
+        :param log_level: int
+            Number between 0 and 50; 0 logs everything, see documentation for logging package
+        :param write_file: bool
+            Indicates whether to create an output file
+        :param file_desc: str
+            Description for the output file
+        :param norm_method: str
+            Method of normalisation
+        :param select_method: str
+            either 'argmax_rand' or 'argmax_true', method for choosing between equal values in the Q matrix
+        :param in_memory: bool
+            Should the ouput file be returned in memmory
+        """
 
         logging.basicConfig(level=log_level)
 
@@ -310,9 +376,11 @@ class FrozenSarsaLearner(FrozenLearner):
         self.init_Q()
         self.init_E()
 
+        # Define the data to record for each episode
         def episode_metrics():
             return '%d,%d,%4.2f,%s' % (episode, ep_steps, ep_total_reward, ep_outcome)
 
+        # Define the headers for the recorded data
         def metric_headers():
             return 'Episode,Steps,Total_Reward,Outcome'
 
@@ -340,11 +408,14 @@ class FrozenSarsaLearner(FrozenLearner):
                 action_new = self.select_action(state_new,select_method)
                 logging.info('New action chosen: %d', action_new)
                 logging.debug('New action feasible: %s', not np.isnan(self.R[state_new, action_new]))
+                # Update eligibility trace matrix from current state
                 self.update_E(state,action)
                 logging.info('E matrix updated: %s',self.E)
-                learned_value = self.R[state,action] + self.gamma * (self.Q[state_new,action_new]-self.Q[state,action])
-                logging.debug('Learned value: %4.2f',learned_value)
-                self.update_Q(learned_value)
+                # Identify the learned value according to SARSA update rule, sometimes labelled as delta
+                delta = self.learned_value(state,action,state_new,action_new)
+                logging.debug('Learned value: %4.2f',delta)
+                # Update the Q matrix based on learned value
+                self.update_Q(delta)
                 self.normalise_Q(norm_method)
                 logging.info('Q matrix updated: %s', self.Q)
 
