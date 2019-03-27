@@ -8,6 +8,8 @@ require(dplyr)
 require(TTR)
 require(reshape2)
 require(stringr)
+require(grid)
+require(gridExtra)
 
 # This function creates additional features for analysis; moving averages and grouping the episodes for analysis
 feat_eng <- function(df){
@@ -47,9 +49,6 @@ ggplot(df) + aes(x=`Episode`,y=`Steps`,color=`Outcome`) + geom_point() + theme_l
 # Scatter of episode and total reward
 ggplot(df) + aes(x=`Episode`,y=`Total_Reward`,color=`Outcome`) + geom_point()
 
-# Line plot of episode and total reward
-ggplot(df) + aes(x=`Episode`,y=`Total_Reward`) + geom_line()
-
 # Scatter plot episode against 10 episode moving average of steps
 ggplot(df) + aes(x=`Episode`,y=SMA10Steps,color=`Outcome`) + geom_point()
 
@@ -70,8 +69,14 @@ ggplot(df) + aes(x=`Episode`,y=Epsilon_start) + geom_line() + theme_light()
 df %>% select(Episode_cent,Total_Reward) %>% group_by(Episode_cent) %>% 
   summarise(av_total_reward = mean(Total_Reward),var_total_reward = var(Total_Reward))
 
-# Plot of the rho parameter
-ggplot(df) + aes(x=`Episode`,y=`Rho`) + geom_line() + theme_light()
+# Plot comparing total reward, average total reward and learned average reward
+
+p1 <- ggplot(df) + aes(x=`Episode`,y=`Total_Reward`) + geom_line() + ylab("Total Reward") + xlim(c(300,500)) + theme_light()
+p2 <- ggplot(df) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + ylab("Moving average (n=10) Total Reward") + xlim(c(300,500)) + theme_light()
+p3 <- ggplot(df) + aes(x=`Episode`,y=`Rho`) + geom_line() + ylab("Learned Average Reward") + xlim(c(300,500)) + theme_light()
+
+grid.arrange(p1,p2,p3,nrow=1)
+ggsave(filename="../plots/metric_comparison.jpg", plot=last_plot(),width=6,height=2,units="in")
 
 ########################
 # Charts used to represent the results of experiment 1
