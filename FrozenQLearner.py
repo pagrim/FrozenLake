@@ -45,6 +45,7 @@ class FrozenLearner:
         self.alpha = alpha
         self.gamma = gamma
         self.episodes = episodes
+        self.rho = 0
 
     # Retrieve the state value from a row or col on the map
     def get_state(self, map_row, map_col):
@@ -145,6 +146,9 @@ class FrozenLearner:
             action = np.random.randint(self.numA)
         return action
 
+    def update_rho(self, reward):
+        self.rho = self.rho + self.alpha*(reward - self.rho)
+
     # Write the results of each episode to file
     @staticmethod
     def open_file(in_memory,file_desc,header):
@@ -243,12 +247,12 @@ class FrozenQLearner(FrozenLearner):
 
         # Define the data to record for each episode
         def episode_metrics():
-            return '%d,%d,%4.2f,%s,%d,%4.2f' % (
-            episode, ep_steps, ep_total_reward, ep_outcome, ep_steps_random, ep_epsilon_start)
+            return '%d,%d,%4.2f,%s,%d,%4.2f,%4.2f' % (
+            episode, ep_steps, ep_total_reward, ep_outcome, ep_steps_random, ep_epsilon_start, self.rho)
 
         # Define the headers for the recorded data
         def metric_headers():
-            return 'Episode,Steps,Total_Reward,Outcome,Steps_random,Epsilon_start'
+            return 'Episode,Steps,Total_Reward,Outcome,Steps_random,Epsilon_start,Rho'
 
         if write_file:
             outfile = self.open_file(in_memory,file_desc,metric_headers())
@@ -280,6 +284,8 @@ class FrozenQLearner(FrozenLearner):
                 self.update_Q(state, action, reward, state_new)
                 self.normalise_Q(norm_method)
                 logging.info('Q matrix updated: %s', self.Q)
+                # Update our learning metric
+                self.update_rho(reward)
                 # Add the reward for this step to the cumulative reward for the episode
                 ep_total_reward += self.Q[state, action]
                 state, state_new = state_new, None

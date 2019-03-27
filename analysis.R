@@ -70,6 +70,9 @@ ggplot(df) + aes(x=`Episode`,y=Epsilon_start) + geom_line() + theme_light()
 df %>% select(Episode_cent,Total_Reward) %>% group_by(Episode_cent) %>% 
   summarise(av_total_reward = mean(Total_Reward),var_total_reward = var(Total_Reward))
 
+# Plot of the rho parameter
+ggplot(df) + aes(x=`Episode`,y=`Rho`) + geom_line() + theme_light()
+
 ########################
 # Charts used to represent the results of experiment 1
 
