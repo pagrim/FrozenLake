@@ -75,8 +75,8 @@ p1 <- ggplot(df) + aes(x=`Episode`,y=`Total_Reward`) + geom_line() + ylab("Total
 p2 <- ggplot(df) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + ylab("Moving average (n=10) Total Reward") + xlim(c(300,500)) + theme_light()
 p3 <- ggplot(df) + aes(x=`Episode`,y=`Rho`) + geom_line() + ylab("Learned Average Reward") + xlim(c(300,500)) + theme_light()
 
-grid.arrange(p1,p2,p3,nrow=1)
-ggsave(filename="../plots/metric_comparison.jpg", plot=last_plot(),width=6,height=2,units="in")
+g <- arrangeGrob(p1,p2,p3,nrow=1)
+ggsave("../plots/metric_comparison.jpg", g,width=6,height=3,units="in")
 
 ########################
 # Charts used to represent the results of experiment 1
