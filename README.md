@@ -9,3 +9,5 @@ The `experiments.py` file contains the details of the experiments run using the 
 
 ## Analysis
 The `analysis.R` file was used to analyse the output of experiments using charts and some quantitative analysis. The charts are saved to the `plots` directory in some cases
+
+Note. you will need to create two subdirectories wherever this code is stored on your filesystem; `outputs` and `plots` if you run the `experiments.py` and `analysis.R` files respectively.
