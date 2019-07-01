@@ -14,3 +14,8 @@ The `analysis.R` file was used to analyse the output of experiments using charts
 A python 3.x environment with gym, numpy, sklearn (tested on python 3.5) to run the experiments. An R environment with ggplot2, dplyr, TTR, reshape2, stringr to run the analysis.
 
 Note. you will need to create two subdirectories wherever this code is stored on your filesystem; `outputs` and `plots` if you run the `experiments.py` and `analysis.R` files respectively.
+
+## Example outputs
+![number of random steps in each episode](imgs/episode_steps_random.jpg)
+![moving average of steps in each episode](imgs/episode_steps.jpg)
+![increasing reward each episode](imgs/increasing_reward.jpg)
