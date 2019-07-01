@@ -76,12 +76,12 @@ df %>% select(Episode_cent,Total_Reward) %>% group_by(Episode_cent) %>%
 # Scatter plot episode against 5 episode moving average of steps
 ggplot(df) + aes(x=`Episode`,y=SMA5Steps,color=`Outcome`) + geom_point(size=2) +
   ylab("Steps") + theme_light()
-ggsave(filename="../plots/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
+ggsave(filename="../plots/exp1/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
 
 # Line plot episode against 10 episode moving average of total reward
 ggplot(df) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + 
   ylab("Moving average (n=10) total reward") + theme_light()
-ggsave(filename="../plots/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp1/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 # Get a subset of data with only average step metrics and unpivot
 steps <- df %>% select(Episode,SMA10Steps,SMA10RandomSteps) %>% melt(id=('Episode'))
@@ -90,7 +90,7 @@ steps <- df %>% select(Episode,SMA10Steps,SMA10RandomSteps) %>% melt(id=('Episod
 ggplot(steps) + aes(x=`Episode`,y=value,color=variable) + geom_line() + ylab("Moving Average Number of Steps in episode (n=10)") +
   scale_color_hue(labels = c("Total Steps", "Random Steps"),name="Metric") +
   theme_light()
-ggsave(filename="../plots/line_episode_steps_random_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp1/line_episode_steps_random_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 
 ########################
@@ -120,11 +120,11 @@ decfac_reward_200_300 <- decfac %>% filter(Episode_cent=='(200,300]') %>% select
 # Plot the total rewards in a heat map for each group of 100 episodes
 ggplot(decfac_reward_400_500, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
-ggsave(filename="../plots/heatmap_400_500_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
+ggsave(filename="../plots/exp2/heatmap_400_500_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
 
 ggplot(decfac_reward_300_400, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
-ggsave(filename="../plots/heatmap_300_400_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
+ggsave(filename="../plots/exp2/heatmap_300_400_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
 
 ggplot(decfac_reward_200_300, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
@@ -140,7 +140,7 @@ ggplot(decfac_plot) + aes(x=`Episode`,y=SMA10TotalReward,colour=df_comb,shape=df
   ylab("Moving average (n=10) total reward") + 
   scale_color_discrete(name=c('Decay Factors')) + 
   theme_light()
-ggsave(filename="../plots/line_episode_reward_sma_df1df2.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp2/line_episode_reward_sma_df1df2.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 decfac_eps <- decfac %>% select(Episode,Epsilon_start,Steps_random,df1,df2) %>% filter(df2 %in% c('0.900000','0.990000'))
 decfac_eps$df_comb <- sprintf('df1=%s, df2=%s',decfac_eps$df1,decfac_eps$df2)
@@ -161,7 +161,7 @@ ggplot(decfac_eps %>% filter(df1=='0.900000'& df2=='0.900000' |  df1=='0.900000'
   #scale_x_continuous(trans='log10') +
   ylab("Epsilon at episode start") + 
   theme_light()
-ggsave(filename="../plots/line_epsilon_decay_select_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp2/line_epsilon_decay_select_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 # Quantitative analysis of decay factor experiment
 
@@ -186,7 +186,7 @@ gm$gamma <- as.factor(gm$gamma)
 # Line plot episode against 10 episode moving average of total reward for each gamma
 ggplot(gm) + aes(x=`Episode`,y=SMA10TotalReward,colour=gamma) + geom_line() + 
   ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
-ggsave(filename="../plots/line_episode_reward_sma_gamma_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp3/line_episode_reward_sma_gamma_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 # Line plot episode against total reward for each gamma
 ggplot(gm) + aes(x=`Episode`,y=Total_Reward,colour=gamma) + geom_line() + 
@@ -234,18 +234,18 @@ srq <- feat_eng(srq)
 # Scatter plot episode against 5 episode moving average of steps
 ggplot(srq) + aes(x=`Episode`,y=SMA5Steps,color=`Outcome`) + geom_point(size=2) +
   ylab("Steps") + theme_light()
-ggsave(filename="../plots/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
+ggsave(filename="../plots/exp4/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
 
 # Line plot episode against 10 episode moving average of total reward
 ggplot(srq) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + 
   ylab("Moving average (n=10) total reward") + theme_light()
-ggsave(filename="../plots/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp4/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 # Line plot episode against 10 episode moving average of steps
 ggplot(srq) + aes(x=`Episode`,y=SMA10Steps) + geom_line() + ylab("Moving Average Number of Steps in episode (n=10)") +
   scale_color_hue(labels = c("Total Steps", "Random Steps"),name="Metric") +
   theme_light()
-ggsave(filename="../plots/line_episode_steps_random_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp4/line_episode_steps_random_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 ########################
 # Analysis of experiment 5, varying lambda in the SARSA experiment
@@ -263,7 +263,7 @@ srq_lam_normsum$lambda <- as.factor(srq_lam_normsum$lambda)
 # Line plot episode total reward
 ggplot(srq_lam_normsum) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() + 
   ylab("Total reward") + scale_color_discrete() + theme_light()
-ggsave(filename="../plots/sarsa_lambdas_totalreward_normsum.jpg", plot=last_plot(),width=7,height=4,units="in")
+ggsave(filename="../plots/exp5/sarsa_lambdas_totalreward_normsum.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 
 
