@@ -17,10 +17,12 @@ Note. you will need to create two subdirectories wherever this code is stored on
 
 ## Example outputs
 The total number of steps and number of random steps
-![number of random steps in each episode](imgs/episode_steps_random.jpg)
+![random steps in each episode](imgs/episode_steps_random.jpg)
+
 
 Whether each episode resulted in reaching the goal 'G' or a hole 'H'
-![moving average of steps in each episode](imgs/episode_steps.jpg)
+![moving average steps each episode](imgs/episode_steps.jpg)
+
 
 The total reward for each episode
 ![increasing reward each episode](imgs/increasing_reward.jpg)
