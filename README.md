@@ -16,6 +16,9 @@ A python 3.x environment with gym, numpy, sklearn (tested on python 3.5) to run 
 Note. you will need to create two subdirectories wherever this code is stored on your filesystem; `outputs` and `plots` if you run the `experiments.py` and `analysis.R` files respectively.
 
 ## Example outputs
+The total number of steps and number of random steps
 ![number of random steps in each episode](imgs/episode_steps_random.jpg)
+Whether each episode resulted in reaching the goal 'G' or a hole 'H'
 ![moving average of steps in each episode](imgs/episode_steps.jpg)
+The total reward for each episode
 ![increasing reward each episode](imgs/increasing_reward.jpg)
