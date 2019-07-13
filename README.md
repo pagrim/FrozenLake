@@ -17,16 +17,10 @@ Note. you will need to create two subdirectories wherever this code is stored on
 
 ## Example outputs
 <html>
-<figure>
-<img align="left" width="500" src="imgs/episode_steps_random.jpg" alt="random steps in each episode">
-<figcaption>The total number of steps and number of random steps</figcaption>
-</figure>
-<fig>
-<img align="left" width="500" src="imgs/episode_steps.jpg" alt="moving average steps each episode">
-<figcaption>Whether each episode resulted in reaching the goal 'G' or a hole 'H'</figcaption>
-</fig>
-<fig>
-<img align="left" width="500" src="imgs/increasing_reward.jpg" alt="increasing reward each episode">
-<figcaption>The total reward for each episode</figcaption>
-</fig>
+<p>The total number of steps and number of random steps</p>
+<img width="500" src="imgs/episode_steps_random.jpg" alt="random steps in each episode">
+<p>Whether each episode resulted in reaching the goal 'G' or a hole 'H'</p>
+<img width="500" src="imgs/episode_steps.jpg" alt="moving average steps each episode">
+<p>The total reward for each episode</p>
+<img width="500" src="imgs/increasing_reward.jpg" alt="increasing reward each episode">
 </html>
