@@ -1,6 +1,6 @@
 
 ##########
-# This script was used to do analysis of experiments run on the Q-learning and SARSA algorithms 
+# This script was used to do analysis of experiments run on the Q-learning and SARSA algorithms
 
 setwd("~/projects/FrozenLake/outputs")
 require(ggplot2)
@@ -8,6 +8,8 @@ require(dplyr)
 require(TTR)
 require(reshape2)
 require(stringr)
+require(grid)
+require(gridExtra)
 
 # This function creates additional features for analysis; moving averages and grouping the episodes for analysis
 feat_eng <- function(df){
@@ -18,7 +20,7 @@ feat_eng <- function(df){
   df$SMA10TotalReward <- SMA(df$Total_Reward,n=10)
   if('Steps_random' %in% colnames(df)){
     df$SMA5RandomSteps <- SMA(df$Steps_random,n=5)
-    df$SMA10RandomSteps <- SMA(df$Steps_random,n=10)  
+    df$SMA10RandomSteps <- SMA(df$Steps_random,n=10)
   }
   episode_max <- max(df$Episode)
   episode_min <- min(df$Episode)
@@ -47,9 +49,6 @@ ggplot(df) + aes(x=`Episode`,y=`Steps`,color=`Outcome`) + geom_point() + theme_l
 # Scatter of episode and total reward
 ggplot(df) + aes(x=`Episode`,y=`Total_Reward`,color=`Outcome`) + geom_point()
 
-# Line plot of episode and total reward
-ggplot(df) + aes(x=`Episode`,y=`Total_Reward`) + geom_line()
-
 # Scatter plot episode against 10 episode moving average of steps
 ggplot(df) + aes(x=`Episode`,y=SMA10Steps,color=`Outcome`) + geom_point()
 
@@ -67,7 +66,7 @@ ggplot(df) + aes(x=`Episode`,y=SMA5TotalReward) + geom_line() + theme_light()
 ggplot(df) + aes(x=`Episode`,y=Epsilon_start) + geom_line() + theme_light()
 
 # Quantitative analysis of experiment 1
-df %>% select(Episode_cent,Total_Reward) %>% group_by(Episode_cent) %>% 
+df %>% select(Episode_cent,Total_Reward) %>% group_by(Episode_cent) %>%
   summarise(av_total_reward = mean(Total_Reward),var_total_reward = var(Total_Reward))
 
 ########################
@@ -79,7 +78,7 @@ ggplot(df) + aes(x=`Episode`,y=SMA5Steps,color=`Outcome`) + geom_point(size=2) +
 ggsave(filename="../plots/exp1/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
 
 # Line plot episode against 10 episode moving average of total reward
-ggplot(df) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + 
+ggplot(df) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() +
   ylab("Moving average (n=10) total reward") + theme_light()
 ggsave(filename="../plots/exp1/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
 
@@ -118,48 +117,48 @@ decfac_reward_200_300 <- decfac %>% filter(Episode_cent=='(200,300]') %>% select
   group_by(df1,df2) %>% summarise(av_total_reward = mean(Total_Reward))
 
 # Plot the total rewards in a heat map for each group of 100 episodes
-ggplot(decfac_reward_400_500, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
+ggplot(decfac_reward_400_500, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") +
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
 ggsave(filename="../plots/exp2/heatmap_400_500_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
 
-ggplot(decfac_reward_300_400, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
+ggplot(decfac_reward_300_400, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") +
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
 ggsave(filename="../plots/exp2/heatmap_300_400_df1df2.png", plot=last_plot(),width=2.5,height=2.5,units="in")
 
-ggplot(decfac_reward_200_300, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") + 
+ggplot(decfac_reward_200_300, aes(df1, df2)) + geom_tile(aes(fill = av_total_reward),colour = "white") +
   scale_fill_gradient(low = "white",high = "steelblue",name='Mean Total Reward')
 
 # Looks from the heatmap like it's better to have a lower value of df1. Plot the total reward for these parameters.
 decfac_plot <- decfac %>% select(Episode,SMA10TotalReward,df1,df2) %>% filter(df2 %in% c('0.900000','0.990000'))
 decfac_plot$df_comb <- sprintf('df1=%s, df2=%s',decfac_plot$df1,decfac_plot$df2)
 
-ggplot(decfac_plot) + aes(x=`Episode`,y=SMA10TotalReward,colour=df_comb,shape=df_comb) + 
+ggplot(decfac_plot) + aes(x=`Episode`,y=SMA10TotalReward,colour=df_comb,shape=df_comb) +
   geom_line() + geom_point(size=2) +
   scale_shape_manual(values=1:12,name=c('Decay Factors')) +
   xlim(c(0,250)) +
-  ylab("Moving average (n=10) total reward") + 
-  scale_color_discrete(name=c('Decay Factors')) + 
+  ylab("Moving average (n=10) total reward") +
+  scale_color_discrete(name=c('Decay Factors')) +
   theme_light()
 ggsave(filename="../plots/exp2/line_episode_reward_sma_df1df2.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 decfac_eps <- decfac %>% select(Episode,Epsilon_start,Steps_random,df1,df2) %>% filter(df2 %in% c('0.900000','0.990000'))
 decfac_eps$df_comb <- sprintf('df1=%s, df2=%s',decfac_eps$df1,decfac_eps$df2)
 
-ggplot(decfac_eps) + aes(x=`Episode`,y=Epsilon_start,colour=df_comb,shape=df_comb) + 
+ggplot(decfac_eps) + aes(x=`Episode`,y=Epsilon_start,colour=df_comb,shape=df_comb) +
   geom_line() + geom_point(size=2) +
   scale_shape_manual(values=1:12,name=c('Decay Factors')) +
   xlim(c(0,250)) +
-  ylab("Moving average (n=10) total reward") + 
-  scale_color_discrete(name=c('Decay Factors')) + 
+  ylab("Moving average (n=10) total reward") +
+  scale_color_discrete(name=c('Decay Factors')) +
   theme_light()
 
-ggplot(decfac_eps %>% filter(df1=='0.900000'& df2=='0.900000' |  df1=='0.900000'& df2=='0.990000' | df1=='0.900000'& df2=='0.999000')) + 
+ggplot(decfac_eps %>% filter(df1=='0.900000'& df2=='0.900000' |  df1=='0.900000'& df2=='0.990000' | df1=='0.900000'& df2=='0.999000')) +
   aes(x=`Episode`,y=Epsilon_start,colour=df_comb,alpha=Steps_random) + geom_line(size=3) +
   xlim(c(0,10)) +
   scale_alpha_continuous(name='Random Steps') +
   scale_color_discrete(name='Decay factors') +
   #scale_x_continuous(trans='log10') +
-  ylab("Epsilon at episode start") + 
+  ylab("Epsilon at episode start") +
   theme_light()
 ggsave(filename="../plots/exp2/line_epsilon_decay_select_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
 
@@ -184,21 +183,21 @@ gm$gamma <- as.factor(gm$gamma)
 
 
 # Line plot episode against 10 episode moving average of total reward for each gamma
-ggplot(gm) + aes(x=`Episode`,y=SMA10TotalReward,colour=gamma) + geom_line() + 
+ggplot(gm) + aes(x=`Episode`,y=SMA10TotalReward,colour=gamma) + geom_line() +
   ylab("Moving average (n=10) total reward") + scale_color_discrete() + theme_light()
 ggsave(filename="../plots/exp3/line_episode_reward_sma_gamma_dfs.jpg", plot=last_plot(),width=7,height=4,units="in")
 
 # Line plot episode against total reward for each gamma
-ggplot(gm) + aes(x=`Episode`,y=Total_Reward,colour=gamma) + geom_line() + 
+ggplot(gm) + aes(x=`Episode`,y=Total_Reward,colour=gamma) + geom_line() +
   ylab("Total reward") + scale_color_discrete() + theme_light()
 
 
 # Quantitative analysis
-gamma_mean_var <- gm %>% select(Episode_cent,Total_Reward,gamma) %>% group_by(Episode_cent,gamma) %>% 
-  summarise(av_total_reward = mean(Total_Reward),var_total_reward=var(Total_Reward)) %>% 
+gamma_mean_var <- gm %>% select(Episode_cent,Total_Reward,gamma) %>% group_by(Episode_cent,gamma) %>%
+  summarise(av_total_reward = mean(Total_Reward),var_total_reward=var(Total_Reward)) %>%
   filter(Episode_cent %in% c('[0,100]','(100,200]','(200,300]'))
 
-dcast(gamma_mean_var, Episode_cent ~ gamma,value.var=c('av_total_reward')) %>% 
+dcast(gamma_mean_var, Episode_cent ~ gamma,value.var=c('av_total_reward')) %>%
   bind_cols(dcast(gamma_mean_var,Episode_cent ~ gamma,value.var=c('var_total_reward'))) %>% View()
 
 # Analysis of further varying gamma experiment with multiple trials
@@ -209,7 +208,7 @@ read_gamma_outputs <- function(i){
       feat_eng() %>%
       add_param_label('gamma',gamma)
   })
-  
+
   gm <- bind_rows(gms)
   gm$gamma <- as.factor(gm$gamma)
   gm$trial <- i
@@ -237,7 +236,7 @@ ggplot(srq) + aes(x=`Episode`,y=SMA5Steps,color=`Outcome`) + geom_point(size=2) 
 ggsave(filename="../plots/exp4/scatter_episode_steps_sma.jpg", plot=last_plot(),width=6,height=4,units="in")
 
 # Line plot episode against 10 episode moving average of total reward
-ggplot(srq) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + 
+ggplot(srq) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() +
   ylab("Moving average (n=10) total reward") + theme_light()
 ggsave(filename="../plots/exp4/line_episode_reward_sma.jpg", plot=last_plot(),width=7,height=4,units="in")
 
@@ -261,13 +260,22 @@ srq_lam_normsum <- bind_rows(srq_lams_normsum)
 srq_lam_normsum$lambda <- as.factor(srq_lam_normsum$lambda)
 
 # Line plot episode total reward
-ggplot(srq_lam_normsum) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() + 
+ggplot(srq_lam_normsum) + aes(x=Episode,y=Total_Reward,colour=lambda) + geom_line() +
   ylab("Total reward") + scale_color_discrete() + theme_light()
 ggsave(filename="../plots/exp5/sarsa_lambdas_totalreward_normsum.jpg", plot=last_plot(),width=7,height=4,units="in")
 
+########################
+# Analysis of experiment 6, using different metrics
 
+# Read in data from experiment 1
+df <- read.csv('Initial_experiment.csv')
+df <- feat_eng(df)
 
+# Plot comparing total reward, average total reward and learned average reward
 
+p1 <- ggplot(df) + aes(x=`Episode`,y=`Total_Reward`) + geom_line() + ylab("Total Reward") + xlim(c(300,500)) + theme_light()
+p2 <- ggplot(df) + aes(x=`Episode`,y=SMA10TotalReward) + geom_line() + ylab("Moving average (n=10) Total Reward") + xlim(c(300,500)) + theme_light()
+p3 <- ggplot(df) + aes(x=`Episode`,y=`Rho`) + geom_line() + ylab("Learned Average Reward") + xlim(c(300,500)) + theme_light()
 
-
-
+g <- arrangeGrob(p1,p2,p3,nrow=1)
+ggsave("../plots/exp6/metric_comparison.jpg", g,width=6,height=3,units="in")
