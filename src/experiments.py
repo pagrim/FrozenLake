@@ -1,6 +1,6 @@
 # This file contains various experiments run on the Q-learning and SARSA algorithms
 
-from FrozenQLearner import FrozenQLearner, FrozenSarsaLearner
+from src.FrozenQLearner import FrozenQLearner, FrozenSarsaLearner
 import numpy as np
 from sklearn.model_selection import ParameterGrid
 
