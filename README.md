@@ -13,8 +13,6 @@ The `analysis.R` file was used to analyse the output of experiments using charts
 ## Requirements to Run
 A python 3.x environment with gym, numpy, sklearn (tested on python 3.5) to run the experiments. An R environment with ggplot2, dplyr, TTR, reshape2, stringr to run the analysis.
 
-Note. you will need to create two subdirectories wherever this code is stored on your filesystem; `outputs` and `plots` if you run the `experiments.py` and `analysis.R` files respectively.
-
 ## Example outputs
 <html>
 <p>The total number of steps and number of random steps</p>
