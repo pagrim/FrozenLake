@@ -1,0 +1,17 @@
+# Ignore gym files
+gym/*
+
+# Ignore output files
+outputs/*.csv
+
+#Ignore data files
+*.csv
+
+#Ignore plots
+plots/*.jpg
+
+#Ignore cache
+__pycache__*
+
+#Ignore idea files
+.idea
